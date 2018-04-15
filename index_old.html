@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <script src="vue.js"></script>
+    <title>Document</title>
+</head>
+
+<body>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        /* #content {
+            overflow: auto;
+            top: 0;
+            left: 0;
+            position: fixed;
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #content>div {
+            margin: auto;
+        } */
+
+        .add_fraction {
+            text-align: center;
+            float: none;
+            margin: 20px;
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        .drob {
+            float: left;
+            padding: 0;
+        }
+
+        .drob>div {
+            text-align: center;
+            float: left;
+
+        }
+
+        .deistvie {
+            margin-top: 20px;
+            padding: 10px;
+        }
+
+        hr {
+            margin: 3px 0;
+        }
+
+        .buffer {
+            position: absolute;
+            top: -1000px;
+            left: -1000px;
+            visibility: hidden;
+            white-space: nowrap;
+            padding: 10px;
+        }
+
+        input {
+            width: 40px;
+            padding: 10px;
+        }
+
+        .answer span {
+            padding: 12px;
+            display: inline-block;
+        }
+
+        .actions {
+            /* margin-top: 100px; */
+            min-width:100%;
+        }
+        #calculator {
+            min-height:100px;
+        }
+    </style>
+    <div class="content" id="calculator">
+        <div>
+            <div class="drob" v-for="(drob, index) in drobi" v-if="!drob.sub">
+                <div class="deistvie" v-if="index > 0">
+                    <input type="text" maxlength="1" @keydown="keyDeystvie" @keyup="Calculate" v-model="drob.action">
+                </div>
+                <div>
+                    <div>
+                        <input type="text" class="input" maxlength="10" @keyup="Calculate" v-model.number="drob.ch" oninput="SetInputWidth(this);">
+                        <div class="buffer"></div>
+                    </div>
+                    <hr>
+                    <div>
+                        <input type="text" class="input" maxlength="10" @keydown="keyDROB" @keyup="Calculate" v-model.number="drob.zn" oninput="SetInputWidth(this);">
+                        <div class="buffer"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="drob answer">
+                <div class="deistvie">
+                    <input type="text" value="=" readonly style="border:0; text-align:center;">
+                </div>
+                <div>
+                    <div>
+                        <span v-html="answer.ch"></span>
+                    </div>
+                    <hr>
+                    <div>
+                        <span v-html="answer.zn"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+    <div class="actions">
+            <button onclick="calculator.addDrob();">
+                add fraction
+            </button>
+            <button click="addDrob">
+                ( open bracket
+            </button>
+            <button click="addDrob">
+                ) close bracket
+            </button>
+        </div>
+    <script>
+        function NOK(A) {
+            var n = A.length, a = Math.abs(A[0]);
+            for (var i = 1; i < n; i++) {
+                var b = Math.abs(A[i]), c = a;
+                while (a && b) { a > b ? a %= b : b %= a; }
+                a = Math.abs(c * A[i]) / (a + b);
+            }
+            return a;
+        }
+
+        function SetInputWidth(Input) {
+            Input.nextElementSibling.innerHTML = Input.value;
+            if (Input.nextElementSibling.clientWidth > 40) {
+                Input.style.width = Input.nextElementSibling.clientWidth + 'px';
+            } else {
+                Input.style.width = "40px";
+            }
+        };
+
+        function SetInputWidthAll() {
+            let Inputs = document.querySelectorAll(".input");
+            console.log(Inputs)
+            for (let i = 0; i < Inputs.length; i++) {
+                Inputs[i].nextElementSibling.innerHTML = Inputs[i].value;
+                if (Inputs[i].nextElementSibling.clientWidth > 40) {
+                    Inputs[i].style.width = Inputs[i].nextElementSibling.clientWidth + 'px';
+                } else {
+                    Inputs[i].style.width = "40px";
+                }
+
+            }
+
+        };
+        var numbers = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+        var controlKeys = [8, 46, 38, 40, 37, 39, 36, 35];
+        var actions = ["/", "*", "-", "+"];
+        var calculator = new Vue({
+            el: '#calculator',
+            data: function () {
+                return {
+                    answer: {
+                        ch: 0,
+                        zn: 1
+                    },
+                    drobi: [
+                        {
+                            action: "",
+                            ch: 0,
+                            zn: 0
+                        },
+                        {
+                            action: "",
+                            ch: 0,
+                            zn: 0
+                        }
+                    ]
+                }
+            },
+            watch: {
+                drobi: function () {
+                    SetInputWidthAll()
+                }
+            },
+            methods: {
+                keyDROB: function (event) {
+                    if ((numbers.indexOf(event.key) < 0) && (controlKeys.indexOf(event.keyCode) < 0)) {
+                        event.returnValue = false;
+                    }
+                },
+                keyDeystvie: function (event) {
+                    if ((actions.indexOf(event.key) < 0) && (controlKeys.indexOf(event.keyCode) < 0)) {
+                        event.returnValue = false;
+                    }
+                },
+                Calculate: function (event) {
+                    let nok_ar = [];
+                    let ch_arr = [];
+                    for (let i = 0; i < this.drobi.length; i++) {
+                        if (this.drobi[i].action.length > 1) {
+                            this.drobi[i].action = this.drobi[i].action[this.drobi[i].action.length - 1];
+                        }
+                        if (actions.indexOf(this.drobi[i].action[0]) < 0) {
+                            this.drobi[i].action = "";
+                        }
+                        if ((this.drobi[i].zn != 0) && (this.drobi[i].zn != "") && (this.drobi[i].ch != 0) && (this.drobi[i].ch != "")) {
+                            nok_ar.push(this.drobi[i].zn);
+                        }
+                    }
+                    let nokk = NOK(nok_ar) || 1;
+                    for (let i = 0; i < this.drobi.length; i++) {
+                        if ((this.drobi[i].ch != "") && (this.drobi[i].zn != 0) && (this.drobi[i].zn != "")) {
+                            ch_arr.push(this.drobi[i].ch * nokk / this.drobi[i].zn);
+                        } else {
+                            ch_arr.push(false);
+                        }
+                    }
+                    this.answer.zn = nokk;
+                    console.log(ch_arr);
+                    // console.log(this.answer.zn, nok_ar);
+                    setTimeout(function() {
+                        SetInputWidthAll();
+                    },100);
+                },
+                addDrob: function () {
+                    this.drobi.push(
+                        {
+                            action: "",
+                            ch: 0,
+                            zn: 0
+                        }
+                    );
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
