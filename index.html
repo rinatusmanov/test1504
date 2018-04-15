@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <script src="vue.js"></script>
+    <title>Тестовое задание № 1</title>
+</head>
+
+<body>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        #fractions {}
+
+        .fraction {
+            display: inline-block;
+        }
+
+        .fraction>div {
+            height: 100px;
+            display: inline-block;
+            float: left;
+            border: 0px solid #999;
+        }
+
+        .flexed {
+            display: flex;
+            /* flex-direction: column; */
+            width: 100%;
+            height: 100%;
+        }
+
+        .flexed>div {
+            margin: auto;
+            padding: 10px;
+        }
+
+        .fraction input {
+            width: 40px;
+            padding: 10px;
+        }
+
+
+
+        .buffer {
+            position: absolute;
+            top: -10000px;
+            left: -10000px;
+            visibility: hidden;
+            white-space: nowrap;
+            padding: 12px;
+        }
+    </style>
+    <div id="calculator">
+        <form onsubmit="return false;">
+            <div id="fractions">
+                <div class="fraction" v-for="(fraction,index) in fractions">
+                    <template v-if="fraction.bracket_open && index > 0 && !fractions[index-1].bracket_open">
+                        <div class="action" >
+                            <!-- Действие для открывающихся скобок -->
+                            <div class="flexed">
+                                <div>
+                                    <input type="text" value="+" v-model="fraction.bracket_open_action" maxlength="1" @input="userAction" @keydown="keyDownAction">
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                    <template v-if="fraction.bracket_open">
+                        <div class="bracket">
+                            <div class="flexed">
+                                <div>
+                                    (
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                    <template v-else-if="fraction.bracket_close">
+                        <div class="bracket">
+                            <div class="flexed">
+                                <div>
+                                    )
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                    <template v-else>
+                        <div class="action" v-if="index > 0 && !fractions[index-1].bracket_open">
+                            <div class="flexed">
+                                <div>
+                                    <input type="text" value="+" maxlength="1" v-model="fraction.action" @input="userAction" @keydown="keyDownAction">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="drob">
+                            <div>
+                                <div>
+                                    <input type="text" value="" maxlength="10" oninput="SetInputWidth(this);" @input="userAction" v-model.number="fraction.cn">
+                                    <div class="buffer"></div>
+                                    <hr>
+                                    <input type="text" value="" maxlength="10" oninput="SetInputWidth(this);" @input="userAction" v-model.number="fraction.zn">
+                                    <div class="buffer"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                <div class="fraction" v-if="answered">
+                    <div class="bracket">
+                        <div class="flexed">
+                            <div>
+                                =
+                            </div>
+                        </div>
+                    </div>
+                    <template v-if="denominator == 1">
+                        <div class="action">
+                            <div class="flexed">
+                                <div>
+                                    <input type="text" v-bind:value="numerator" disabled id="numerator">
+                                    <div class="buffer"></div>
+                                    
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                    <template v-else>
+                        <div class="drob">
+                            <div>
+                                <div>
+                                    <input type="text" v-bind:value="numerator" disabled id="numerator">
+                                    <div class="buffer"></div>
+                                    <hr>
+                                    <input type="text" v-bind:value="denominator" disabled id="denominator">
+                                    <div class="buffer"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </form>
+        <div id="actions">
+            <button @click="addFraction">Добавить секцию</button>
+            <button @click="openBracket">( открыть скобку</button>
+            <button v-if="opened>0 && !nowOpened" @click="closeBracket">) Закрыть скобку</button>
+        </div>
+    </div>
+    <script>
+        function NOK(A) {
+            var n = A.length, a = Math.abs(A[0]);
+            for (var i = 1; i < n; i++) {
+                var b = Math.abs(A[i]), c = a;
+                while (a && b) { a > b ? a %= b : b %= a; }
+                a = Math.abs(c * A[i]) / (a + b);
+            }
+            return a;
+        }
+        function NOD(A) {
+            var n = A.length, x = Math.abs(A[0]);
+            for (var i = 1; i < n; i++) {
+                var y = Math.abs(A[i]);
+                while (x && y) { x > y ? x %= y : y %= x; }
+                x += y;
+            }
+            return x;
+        }
+        function SetInputWidth(Input) {
+            try {
+                Input.nextElementSibling.innerHTML = Input.value;
+                if (Input.nextElementSibling.clientWidth > 40) {
+                    Input.style.width = (0 + Input.nextElementSibling.clientWidth) + 'px';
+                } else {
+                    Input.style.width = "40px";
+                }
+            } catch (ex) { }
+        };
+
+        var numbers = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+        var controlKeys = [8, 46, 38, 40, 37, 39, 36, 35];
+        var actions = ["/", "*", "-", "+"];
+
+        var calculator = new Vue({
+            el: '#calculator',
+            data: function () {
+                return {
+                    numerator: 1,
+                    denominator: 1,
+                    fractions: [
+                    ],
+                    opened: 0,
+                    nowOpened: false,
+                    answered: false,
+                    lastButton: ""
+                }
+            },
+            watch: {
+                numerator: () => {                    
+                    setTimeout(() => {
+                        SetInputWidth(document.getElementById("numerator"));
+                    }, 300);
+                },
+                denominator: () =>{
+                    setTimeout(() => {
+                        SetInputWidth(document.getElementById("denominator"));
+                    }, 200);
+                },
+                opened: function () {
+                    this.userAction();
+                }
+            },
+            methods: {
+                notCorrect: function () {
+                    if (this.opened > 0) {
+                        this.answered = false;
+                        return true;
+                    }
+
+                    return false;
+                },
+                keyDROB: function (event) {
+                    if ((numbers.indexOf(event.key) < 0) && (controlKeys.indexOf(event.keyCode) < 0)) {
+                        event.returnValue = false;
+                    }
+                },
+                keyDownAction: function (event) {
+                    if ((actions.indexOf(event.key) < 0) && (controlKeys.indexOf(event.keyCode) < 0)) {
+                        event.returnValue = false;
+                    }
+                },
+                userAction: function () {
+                    if (this.notCorrect()) {
+                        return;
+                    }
+
+                    let nok_arr = [];
+                    let answered = false;
+                    for (let i = 0; i < this.fractions.length; i++) {
+                        if (!this.fractions[i].bracket_open && !this.fractions[i].bracket_close && this.fractions[i].action != "" && this.fractions[i].zn && this.fractions[i].zn != 0 && this.fractions[i].cn) {
+                            nok_arr.push(this.fractions[i].zn)
+                        }
+                    }
+                    if (nok_arr.length == 0) {
+                        this.answered = false;
+                        return;
+                    }
+                    this.answered = true;
+                    let nok = NOK(nok_arr);
+                    let evvaling = "";
+                    if (this.fractions[0].bracket_open) {
+                        evvaling += "(";
+                    } else {
+                        evvaling += "" + (this.fractions[0].cn * nok / this.fractions[0].zn) + "";
+                    }
+                    for (let i = 1; i < this.fractions.length; i++) {
+                        if (this.fractions[i].bracket_open) {
+                            if (this.fractions[i - 1].bracket_open) {
+                                evvaling += "(";
+                            } else {
+                                evvaling += "" + this.fractions[i].bracket_open_action + "(";
+                            }
+                        } else if (this.fractions[i].bracket_close) {
+                            evvaling += ")";
+                        } else {
+                            evvaling += "" + this.fractions[i].action + (this.fractions[i].cn * nok / this.fractions[i].zn) + "";
+                        }
+                    }
+                    try {
+                        result = eval(evvaling);
+                    } catch (ex) {
+                        this.answered = false;
+                        return;
+                    }
+                    console.log(evvaling)
+                    let nod = NOD([nok, result]);
+                    nok /= nod;
+                    result /= nod;
+                    setTimeout(() => {
+                        this.denominator = nok;
+                        this.numerator = result;
+                    }, 200);
+                },
+                addFraction: function () {
+                    this.fractions.push(
+                        {
+                            bracket_open_action: "",
+                            bracket_open: false,
+                            bracket_close: false,
+                            action: "+",
+                            cn: 1,
+                            zn: 1
+                        }
+                    );
+                    this.nowOpened = false;
+                    this.lastButton = "add";
+                    this.userAction();
+                },
+                openBracket: function () {
+                    this.fractions.push(
+                        {
+                            bracket_open_action: "+",
+                            bracket_open: true,
+                            bracket_close: false,
+                            action: "",
+                            cn: 0,
+                            zn: 0
+                        }
+                    );
+                    this.opened++;
+                    this.lastButton = "open";
+                    this.nowOpened = true;
+                },
+                closeBracket: function () {
+                    this.fractions.push(
+                        {
+                            bracket_open_action: "",
+                            bracket_open: false,
+                            bracket_close: true,
+                            action: "",
+                            cn: 0,
+                            zn: 0
+                        }
+                    );
+                    this.lastButton = "close";
+                    this.opened--;
+                    this.userAction();
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
